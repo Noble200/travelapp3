@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Allva.Desktop.ViewModels.Admin"
+             xmlns:converters="using:Allva.Desktop.Converters"
              mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
              x:Class="Allva.Desktop.Views.Admin.ManageComerciosView"
              x:DataType="vm:ManageComerciosViewModel">
@@ -494,14 +495,14 @@
                                                  Watermark="Dirección de la oficina central..."/>
                                     </StackPanel>
 
-                                    <!-- Teléfono y País en Grid -->
-                                    <Grid ColumnDefinitions="*,*" ColumnGap="12">
-                                        <StackPanel Grid.Column="0">
+                                    <!-- Teléfono y País en Grid - CORREGIDO -->
+                                    <Grid ColumnDefinitions="*,*">
+                                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
                                             <TextBlock Text="Teléfono" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                             <TextBox Text="{Binding FormNumeroContacto}" 
                                                      Watermark="+00 000 000 000"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1">
+                                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
                                             <TextBlock Text="País" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                             <ComboBox SelectedItem="{Binding FormPais}" HorizontalAlignment="Stretch">
                                                 <ComboBoxItem Content="Argentina"/>
@@ -584,13 +585,13 @@
                                                             </Button>
                                                         </Grid>
 
-                                                        <!-- Nombre Local -->
-                                                        <Grid ColumnDefinitions="*,*" ColumnGap="10">
-                                                            <StackPanel Grid.Column="0">
+                                                        <!-- Nombre Local - CORREGIDO -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,5,0">
                                                                 <TextBlock Text="Nombre Local" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding NombreLocal}" Watermark="Local 1"/>
                                                             </StackPanel>
-                                                            <StackPanel Grid.Column="1">
+                                                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
                                                                 <TextBlock Text="Código" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding CodigoLocal}" 
                                                                          IsReadOnly="True"
@@ -604,29 +605,29 @@
                                                             <TextBox Text="{Binding Direccion}" Watermark="Calle, Avenida..."/>
                                                         </StackPanel>
 
-                                                        <!-- Número, Escalera, Piso -->
-                                                        <Grid ColumnDefinitions="*,*,*" ColumnGap="8">
-                                                            <StackPanel Grid.Column="0">
+                                                        <!-- Número, Escalera, Piso - CORREGIDO -->
+                                                        <Grid ColumnDefinitions="*,*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                                                 <TextBlock Text="Número" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding LocalNumero}" Watermark="123"/>
                                                             </StackPanel>
-                                                            <StackPanel Grid.Column="1">
+                                                            <StackPanel Grid.Column="1" Margin="4,0,4,0">
                                                                 <TextBlock Text="Escalera" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding Escalera}" Watermark="A"/>
                                                             </StackPanel>
-                                                            <StackPanel Grid.Column="2">
+                                                            <StackPanel Grid.Column="2" Margin="4,0,0,0">
                                                                 <TextBlock Text="Piso" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding Piso}" Watermark="2"/>
                                                             </StackPanel>
                                                         </Grid>
 
-                                                        <!-- Teléfono y Email -->
-                                                        <Grid ColumnDefinitions="*,*" ColumnGap="10">
-                                                            <StackPanel Grid.Column="0">
+                                                        <!-- Teléfono y Email - CORREGIDO -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,5,0">
                                                                 <TextBlock Text="Teléfono" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding Telefono}" Watermark="+00 000 000"/>
                                                             </StackPanel>
-                                                            <StackPanel Grid.Column="1">
+                                                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
                                                                 <TextBlock Text="Email" FontSize="12" Margin="0,0,0,4"/>
                                                                 <TextBox Text="{Binding Email}" Watermark="local@email.com"/>
                                                             </StackPanel>
@@ -716,7 +717,7 @@
                                     </Grid>
 
                                     <!-- Observaciones si existen -->
-                                    <StackPanel IsVisible="{Binding ComercioSeleccionado.Observaciones, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <StackPanel IsVisible="{Binding ComercioSeleccionado.Observaciones, Converter={x:Static converters:StringConverters.IsNotNullOrEmpty}}">
                                         <TextBlock Text="Observaciones:" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                         <TextBox Text="{Binding ComercioSeleccionado.Observaciones}" 
                                                  IsReadOnly="True"
@@ -831,7 +832,7 @@
                                     MinWidth="140">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="💾"/>
-                                    <TextBlock Text="{Binding ModoEdicion, Converter={x:Static ObjectConverters.IsTrue}, ConverterParameter='Actualizar|Crear'}"/>
+                                    <TextBlock Text="{Binding ModoEdicion, Converter={x:Static converters:ObjectConverters.IsTrue}, ConverterParameter='Actualizar|Crear'}"/>
                                 </StackPanel>
                             </Button>
                         </Grid>

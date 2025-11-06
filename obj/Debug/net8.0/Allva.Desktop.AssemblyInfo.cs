@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Allva.Desktop")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b2785322db9e8966d9e660a0fce9f51e7e5ba31b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3149c427f98616d2513977254e76d87d859bb30a")]
 [assembly: System.Reflection.AssemblyProductAttribute("Allva.Desktop")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Allva.Desktop")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
