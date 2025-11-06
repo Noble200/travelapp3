@@ -462,6 +462,7 @@
 
                     <!-- Contenido del panel (ScrollViewer para formulario o detalles) -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <Panel>
                         
                         <!-- =========================================== -->
                         <!-- FORMULARIO DE CREAR/EDITAR COMERCIO -->
@@ -716,8 +717,8 @@
                                         </Border>
                                     </Grid>
 
-                                    <!-- Observaciones si existen -->
-                                    <StackPanel IsVisible="{Binding ComercioSeleccionado.Observaciones, Converter={x:Static converters:StringConverters.IsNotNullOrEmpty}}">
+                                    <!-- Observaciones si existen - CORRECCIÓN APLICADA -->
+                                    <StackPanel IsVisible="{Binding ComercioSeleccionado.Observaciones, Converter={StaticResource NotEmptyConverter}}">
                                         <TextBlock Text="Observaciones:" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                         <TextBox Text="{Binding ComercioSeleccionado.Observaciones}" 
                                                  IsReadOnly="True"
@@ -809,6 +810,7 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
+                    </Panel>
                     </ScrollViewer>
 
                     <!-- Footer con botones (solo visible en modo formulario) -->
