@@ -10,12 +10,15 @@ using Allva.Desktop.Models.Admin;
 using Allva.Desktop.Models;
 using Allva.Desktop.Services;
 using Npgsql;
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 
 namespace Allva.Desktop.ViewModels.Admin;
 
 /// <summary>
 /// ViewModel para la gestión de comercios en el panel de administración
-/// VERSIÓN COMPLETA Y MEJORADA con todas las funcionalidades
+/// VERSIÓN ACTUALIZADA CON FUNCIONALIDAD COMPLETA DE ARCHIVOS
+/// Usa los modelos LocalSimpleModel y ComercioModel EXACTOS del proyecto
 /// </summary>
 public partial class ManageComerciosViewModel : ObservableObject
 {
@@ -76,7 +79,7 @@ public partial class ManageComerciosViewModel : ObservableObject
     [ObservableProperty]
     private string _tituloFormulario = "Crear Comercio";
 
-    // Campos del formulario de comercio
+    // Campos del formulario de comercio (según ComercioModel REAL)
     [ObservableProperty]
     private string _formNombreComercio = string.Empty;
 
@@ -104,7 +107,7 @@ public partial class ManageComerciosViewModel : ObservableObject
     [ObservableProperty]
     private bool _formActivo = true;
 
-    // Locales del comercio
+    // Locales del comercio (usando LocalFormModel REAL que ya existe)
     [ObservableProperty]
     private ObservableCollection<LocalFormModel> _localesComercio = new();
 
@@ -130,6 +133,12 @@ public partial class ManageComerciosViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<ArchivoComercioModel> _archivosComercioSeleccionado = new();
+
+    /// <summary>
+    /// Lista de rutas de archivos que se subirán al crear/editar el comercio
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _archivosParaSubir = new();
 
     // ============================================
     // SERVICIOS
@@ -245,6 +254,7 @@ public partial class ManageComerciosViewModel : ObservableObject
     {
         var locales = new List<LocalSimpleModel>();
         
+        // Usar los campos REALES de LocalSimpleModel
         var query = @"SELECT id_local, codigo_local, nombre_local, direccion, local_numero,
                              escalera, piso, telefono, email, observaciones,
                              numero_usuarios_max, activo,
@@ -415,7 +425,7 @@ public partial class ManageComerciosViewModel : ObservableObject
         
         try
         {
-            // 1. Insertar comercio principal
+            // 1. Insertar comercio principal (con TODOS los campos del modelo real)
             var queryComercio = @"
                 INSERT INTO comercios (
                     nombre_comercio, nombre_srl, direccion_central, 
@@ -445,7 +455,7 @@ public partial class ManageComerciosViewModel : ObservableObject
             
             var idComercio = Convert.ToInt32(await cmdComercio.ExecuteScalarAsync());
             
-            // 2. Insertar locales asociados
+            // 2. Insertar locales asociados (con TODOS los campos del modelo real)
             foreach (var local in LocalesComercio)
             {
                 var queryLocal = @"
@@ -486,6 +496,23 @@ public partial class ManageComerciosViewModel : ObservableObject
                 cmdLocal.Parameters.AddWithValue("@ModuloPackViajes", local.ModuloPackViajes);
                 
                 await cmdLocal.ExecuteNonQueryAsync();
+            }
+            
+            // 3. Subir archivos si hay
+            if (ArchivosParaSubir.Any())
+            {
+                foreach (var rutaArchivo in ArchivosParaSubir)
+                {
+                    try
+                    {
+                        await _archivoService.SubirArchivo(idComercio, rutaArchivo, null, "admin");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error subiendo archivo {rutaArchivo}: {ex.Message}");
+                        // Continuar con los demás archivos aunque uno falle
+                    }
+                }
             }
             
             await transaction.CommitAsync();
@@ -586,6 +613,23 @@ public partial class ManageComerciosViewModel : ObservableObject
                 cmdLocal.Parameters.AddWithValue("@ModuloPackViajes", local.ModuloPackViajes);
                 
                 await cmdLocal.ExecuteNonQueryAsync();
+            }
+            
+            // 4. Subir archivos nuevos si hay
+            if (ArchivosParaSubir.Any())
+            {
+                foreach (var rutaArchivo in ArchivosParaSubir)
+                {
+                    try
+                    {
+                        await _archivoService.SubirArchivo(ComercioSeleccionado.IdComercio, rutaArchivo, null, "admin");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error subiendo archivo {rutaArchivo}: {ex.Message}");
+                        // Continuar con los demás archivos aunque uno falle
+                    }
+                }
             }
             
             await transaction.CommitAsync();
@@ -755,6 +799,61 @@ public partial class ManageComerciosViewModel : ObservableObject
     // ============================================
 
     [RelayCommand]
+    private async Task SubirArchivo()
+    {
+        try
+        {
+            // Obtener la ventana principal
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is 
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (topLevel == null) return;
+
+            var storage = topLevel.StorageProvider;
+            
+            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Seleccionar archivos",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Todos los archivos") { Patterns = new[] { "*.*" } },
+                    new FilePickerFileType("Documentos") { Patterns = new[] { "*.pdf", "*.doc", "*.docx", "*.txt" } },
+                    new FilePickerFileType("Imágenes") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif" } }
+                }
+            });
+
+            if (files != null && files.Count > 0)
+            {
+                foreach (var file in files)
+                {
+                    var rutaArchivo = file.Path.LocalPath;
+                    if (!ArchivosParaSubir.Contains(rutaArchivo))
+                    {
+                        ArchivosParaSubir.Add(rutaArchivo);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MensajeExito = $"❌ Error al seleccionar archivos: {ex.Message}";
+            MostrarMensajeExito = true;
+            await Task.Delay(3000);
+            MostrarMensajeExito = false;
+        }
+    }
+
+    [RelayCommand]
+    private void EliminarArchivoSubido(string rutaArchivo)
+    {
+        if (string.IsNullOrEmpty(rutaArchivo)) return;
+        ArchivosParaSubir.Remove(rutaArchivo);
+    }
+
+    [RelayCommand]
     private async Task DescargarArchivo(ArchivoComercioModel archivo)
     {
         if (archivo == null) return;
@@ -800,6 +899,7 @@ public partial class ManageComerciosViewModel : ObservableObject
         FormPorcentajeComisionDivisas = 0;
         FormActivo = true;
         LocalesComercio.Clear();
+        ArchivosParaSubir.Clear();
     }
 
     private void CargarDatosEnFormulario(ComercioModel comercio)
@@ -838,6 +938,9 @@ public partial class ManageComerciosViewModel : ObservableObject
                 ModuloPackViajes = local.ModuloPackViajes
             });
         }
+        
+        // Limpiar archivos para subir (los existentes se cargan en VerDetalles)
+        ArchivosParaSubir.Clear();
     }
 
     private string GenerarCodigoLocal()
