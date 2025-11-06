@@ -1,0 +1,557 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:m="using:Allva.Desktop.Models"
+             xmlns:vm="using:Allva.Desktop.ViewModels.Admin"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="Allva.Desktop.Views.Admin.ManageUsersView"
+             x:DataType="vm:ManageUsersViewModel">
+
+    <!-- ============================================ -->
+    <!-- ESTILOS LOCALES -->
+    <!-- ============================================ -->
+    <UserControl.Styles>
+        <!-- Estilo para tarjetas de usuario -->
+        <Style Selector="Border.user-card">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,25"/>
+            <Setter Property="BoxShadow" Value="0 4 12 0 #15000000"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Estilo para badges de estado -->
+        <Style Selector="Border.badge">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+
+        <!-- Estilo para campos de formulario -->
+        <Style Selector="TextBox.form-field">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#0b5394"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="42"/>
+        </Style>
+
+        <!-- Estilo para etiquetas de formulario -->
+        <Style Selector="TextBlock.form-label">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#0b5394"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <!-- Estilo para botones primarios -->
+        <Style Selector="Button.btn-primary">
+            <Setter Property="Background" Value="#0b5394"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.btn-primary:pointerover">
+            <Setter Property="Background" Value="#094073"/>
+        </Style>
+
+        <!-- Estilo para botones secundarios -->
+        <Style Selector="Button.btn-secondary">
+            <Setter Property="Background" Value="#ffd966"/>
+            <Setter Property="Foreground" Value="#0b5394"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Estilo para botones de peligro -->
+        <Style Selector="Button.btn-danger">
+            <Setter Property="Background" Value="#dc3545"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.btn-danger:pointerover">
+            <Setter Property="Background" Value="#c82333"/>
+        </Style>
+
+        <!-- Estilo para botones de editar -->
+        <Style Selector="Button.btn-edit">
+            <Setter Property="Background" Value="#ffd966"/>
+            <Setter Property="Foreground" Value="#0b5394"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Estilo para estadísticas -->
+        <Style Selector="Border.stat-card">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="BoxShadow" Value="0 2 8 0 #10000000"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- ============================================ -->
+    <!-- CONTENIDO PRINCIPAL -->
+    <!-- ============================================ -->
+    <Grid>
+        <!-- Panel de notificaciones -->
+        <Border IsVisible="{Binding MostrarMensaje}"
+                Background="#28a745"
+                CornerRadius="8"
+                Padding="16"
+                Margin="20"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                ZIndex="1000">
+            <TextBlock Text="{Binding Mensaje}"
+                       Foreground="White"
+                       FontWeight="SemiBold"
+                       FontSize="14"/>
+        </Border>
+
+        <ScrollViewer>
+            <StackPanel Margin="30" Spacing="24">
+
+                <!-- ============================================ -->
+                <!-- HEADER CON TÍTULO Y BOTÓN CREAR -->
+                <!-- ============================================ -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="8">
+                        <TextBlock Text="Gestión de Usuarios"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="#0b5394"/>
+                        <TextBlock Text="Administra usuarios normales y flotantes del sistema"
+                                   FontSize="14"
+                                   Foreground="#666666"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            Content="➕ Crear Usuario"
+                            Classes="btn-primary"
+                            Command="{Binding MostrarFormularioCrearCommand}"
+                            VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- ============================================ -->
+                <!-- ESTADÍSTICAS -->
+                <!-- ============================================ -->
+                <Grid ColumnDefinitions="*,16,*,16,*">
+                    <Border Grid.Column="0" Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Total Usuarios"
+                                       FontSize="13"
+                                       Foreground="#666666"/>
+                            <TextBlock Text="{Binding TotalUsuarios}"
+                                       FontSize="32"
+                                       FontWeight="Bold"
+                                       Foreground="#0b5394"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Usuarios Activos"
+                                       FontSize="13"
+                                       Foreground="#666666"/>
+                            <TextBlock Text="{Binding UsuariosActivos}"
+                                       FontSize="32"
+                                       FontWeight="Bold"
+                                       Foreground="#28a745"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4" Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Usuarios Flotantes"
+                                       FontSize="13"
+                                       Foreground="#666666"/>
+                            <TextBlock Text="{Binding UsuariosFlotantes}"
+                                       FontSize="32"
+                                       FontWeight="Bold"
+                                       Foreground="#ffd966"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ============================================ -->
+                <!-- LISTA DE USUARIOS -->
+                <!-- ============================================ -->
+                <ItemsControl ItemsSource="{Binding Usuarios}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="user-card">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    
+                                    <!-- Información del usuario -->
+                                    <StackPanel Grid.Column="0" Spacing="12">
+                                        
+                                        <!-- Fila 1: Nombre y badges -->
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="4">
+                                                <TextBlock Text="{Binding NombreCompleto}"
+                                                           FontSize="20"
+                                                           FontWeight="Bold"
+                                                           Foreground="#0b5394"/>
+                                                <TextBlock Text="{Binding NumeroUsuario}"
+                                                           FontSize="14"
+                                                           Foreground="#666666"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <!-- Badge de tipo de usuario -->
+                                                <Border Classes="badge"
+                                                        Background="#ffd966">
+                                                    <TextBlock Text="{Binding TipoUsuario}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#0b5394"/>
+                                                </Border>
+
+                                                <!-- Badge de estado -->
+                                                <Border Classes="badge"
+                                                        Background="{Binding EstadoColor}">
+                                                    <TextBlock Text="{Binding EstadoTexto}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="White"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Fila 2: Información de contacto y local -->
+                                        <Grid ColumnDefinitions="*,24,*">
+                                            <StackPanel Grid.Column="0" Spacing="8">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="📧" FontSize="14"/>
+                                                    <TextBlock Text="{Binding Correo}"
+                                                               FontSize="14"
+                                                               Foreground="#333333"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="📞" FontSize="14"/>
+                                                    <TextBlock Text="{Binding Telefono}"
+                                                               FontSize="14"
+                                                               Foreground="#333333"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2" Spacing="8">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="🏪" FontSize="14"/>
+                                                    <TextBlock Text="{Binding NombreLocal}"
+                                                               FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#0b5394"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="🏢" FontSize="14"/>
+                                                    <TextBlock Text="{Binding NombreComercio}"
+                                                               FontSize="14"
+                                                               Foreground="#666666"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Fila 3: Último acceso -->
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="🕐 Último acceso:"
+                                                       FontSize="13"
+                                                       Foreground="#999999"/>
+                                            <TextBlock Text="{Binding UltimoAccesoTexto}"
+                                                       FontSize="13"
+                                                       Foreground="#999999"/>
+                                        </StackPanel>
+
+                                    </StackPanel>
+
+                                    <!-- Botones de acción -->
+                                    <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                                        <Button Content="✏️ Editar"
+                                                Classes="btn-edit"
+                                                Command="{Binding $parent[ItemsControl].((vm:ManageUsersViewModel)DataContext).EditarUsuarioCommand}"
+                                                CommandParameter="{Binding}"/>
+
+                                        <Button Content="Cambiar Estado"
+                                                Classes="btn-secondary"
+                                                Command="{Binding $parent[ItemsControl].((vm:ManageUsersViewModel)DataContext).CambiarEstadoUsuarioCommand}"
+                                                CommandParameter="{Binding}"/>
+
+                                        <Button Content="🗑️ Eliminar"
+                                                Classes="btn-danger"
+                                                Command="{Binding $parent[ItemsControl].((vm:ManageUsersViewModel)DataContext).EliminarUsuarioCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </StackPanel>
+
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- ============================================ -->
+                <!-- FORMULARIO DE CREACIÓN/EDICIÓN -->
+                <!-- ============================================ -->
+                <Border IsVisible="{Binding MostrarFormulario}"
+                        Background="White"
+                        CornerRadius="16"
+                        Padding="32"
+                        BoxShadow="0 8 24 0 #20000000">
+
+                    <StackPanel Spacing="24">
+                        
+                        <!-- Título del formulario -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding TituloFormulario}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Foreground="#0b5394"/>
+
+                            <Button Grid.Column="1"
+                                    Content="✕"
+                                    FontSize="20"
+                                    Foreground="#999999"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Command="{Binding CerrarFormularioCommand}"/>
+                        </Grid>
+
+                        <Separator Background="#E0E0E0"/>
+
+                        <!-- Grid con campos del formulario -->
+                        <Grid ColumnDefinitions="*,20,*,20,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto">
+
+                            <!-- Fila 1 -->
+                            <StackPanel Grid.Column="0" Grid.Row="0">
+                                <TextBlock Classes="form-label" Text="Número de Usuario *"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormNumeroUsuario}"
+                                         Watermark="Ej: EMP001"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Grid.Row="0">
+                                <TextBlock Classes="form-label" Text="Nombre *"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormNombre}"
+                                         Watermark="Nombre"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4" Grid.Row="0">
+                                <TextBlock Classes="form-label" Text="Apellidos *"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormApellidos}"
+                                         Watermark="Apellidos"/>
+                            </StackPanel>
+
+                            <!-- Fila 2 -->
+                            <StackPanel Grid.Column="0" Grid.Row="2">
+                                <TextBlock Classes="form-label" Text="Correo Electrónico *"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormCorreo}"
+                                         Watermark="usuario@allva.com"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Grid.Row="2">
+                                <TextBlock Classes="form-label" Text="Teléfono"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormTelefono}"
+                                         Watermark="+34 XXX XXX XXX"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4" Grid.Row="2"
+                                        IsVisible="{Binding !ModoEdicion}">
+                                <TextBlock Classes="form-label" Text="Contraseña *"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormPassword}"
+                                         PasswordChar="●"
+                                         Watermark="Contraseña"/>
+                            </StackPanel>
+
+                            <!-- Fila 3 -->
+                            <StackPanel Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="5">
+                                <TextBlock Classes="form-label" Text="Observaciones"/>
+                                <TextBox Classes="form-field"
+                                         Text="{Binding FormObservaciones}"
+                                         Height="80"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         Watermark="Notas adicionales sobre el usuario..."/>
+                            </StackPanel>
+
+                            <!-- Fila 4: Checkboxes -->
+                            <StackPanel Grid.Column="0" Grid.Row="6" Orientation="Horizontal" Spacing="24">
+                                <CheckBox IsChecked="{Binding FormEsFlotante}"
+                                          Content="Usuario Flotante"
+                                          FontSize="14"
+                                          FontWeight="SemiBold"
+                                          Foreground="#0b5394"/>
+
+                                <CheckBox IsChecked="{Binding FormActivo}"
+                                          Content="Usuario Activo"
+                                          FontSize="14"
+                                          FontWeight="SemiBold"
+                                          Foreground="#0b5394"/>
+                            </StackPanel>
+
+                        </Grid>
+
+                        <!-- Separador -->
+                        <Separator Background="#E0E0E0" Margin="0,8"/>
+
+                        <!-- ============================================ -->
+                        <!-- SECCIÓN DE ASIGNACIÓN DE LOCAL -->
+                        <!-- ============================================ -->
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Asignación de Local"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Foreground="#0b5394"/>
+
+                            <TextBlock Text="Selecciona los locales donde este usuario podrá trabajar"
+                                       FontSize="13"
+                                       Foreground="#666666"
+                                       TextWrapping="Wrap"/>
+
+                            <!-- Búsqueda de local -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Classes="form-field"
+                                         Text="{Binding BusquedaLocal}"
+                                         Watermark="Buscar local por código o nombre..."
+                                         Margin="0,0,10,0"/>
+                                
+                                <Button Grid.Column="1"
+                                        Content="🔍 Buscar"
+                                        Classes="btn-primary"
+                                        Command="{Binding BuscarLocalCommand}"/>
+                            </Grid>
+
+                            <!-- Resultados de búsqueda -->
+                            <Border IsVisible="{Binding MostrarResultadosBusqueda}"
+                                    Background="White"
+                                    BorderBrush="#0b5394"
+                                    BorderThickness="2"
+                                    CornerRadius="8"
+                                    MaxHeight="200">
+                                <ScrollViewer>
+                                    <ItemsControl ItemsSource="{Binding ResultadosBusquedaLocales}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="12"
+                                                        Cursor="Hand"
+                                                        HorizontalContentAlignment="Left"
+                                                        Command="{Binding $parent[ItemsControl].((vm:ManageUsersViewModel)DataContext).SeleccionarLocalCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="{Binding NombreLocal}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#0b5394"/>
+                                                        <TextBlock Text="{Binding CodigoLocal}"
+                                                                   FontSize="12"
+                                                                   Foreground="#666666"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- Locales asignados -->
+                            <StackPanel IsVisible="{Binding LocalesAsignados.Count}" Spacing="8">
+                                <TextBlock Text="Locales Asignados:"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="#0b5394"/>
+
+                                <ItemsControl ItemsSource="{Binding LocalesAsignados}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#f8f9fa"
+                                                    BorderBrush="#0b5394"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="12"
+                                                    Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Grid.Column="0" Spacing="2">
+                                                        <TextBlock Text="{Binding NombreLocal}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#0b5394"/>
+                                                        <TextBlock Text="{Binding CodigoLocal}"
+                                                                   FontSize="12"
+                                                                   Foreground="#666666"/>
+                                                    </StackPanel>
+
+                                                    <Button Grid.Column="1"
+                                                            Content="✕"
+                                                            FontSize="16"
+                                                            Foreground="#dc3545"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Cursor="Hand"
+                                                            Command="{Binding $parent[ItemsControl].((vm:ManageUsersViewModel)DataContext).QuitarLocalAsignadoCommand}"
+                                                            CommandParameter="{Binding}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                        </StackPanel>
+
+                        <!-- Separador -->
+                        <Separator Background="#E0E0E0" Margin="0,8"/>
+
+                        <!-- Botones del formulario -->
+                        <Grid ColumnDefinitions="*,Auto,12,Auto">
+                            <Button Grid.Column="1"
+                                    Content="Cancelar"
+                                    Classes="btn-secondary"
+                                    Command="{Binding CerrarFormularioCommand}"
+                                    MinWidth="120"/>
+
+                            <Button Grid.Column="3"
+                                    Content="Guardar Usuario"
+                                    Classes="btn-primary"
+                                    Command="{Binding GuardarUsuarioCommand}"
+                                    MinWidth="120"/>
+                        </Grid>
+
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+
+</UserControl>
