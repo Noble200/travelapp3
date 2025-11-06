@@ -38,11 +38,11 @@ public class ArchivoService
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
-            var query = @"SELECT id_archivo, id_comercio, nombre_archivo, nombre_original, 
-                                 tipo_archivo, tamano_bytes, ruta_archivo, descripcion,
-                                 fecha_subida, subido_por, activo
+            var query = @"SELECT id_archivo, id_comercio, nombre_archivo, ruta_archivo,
+                                 tipo_archivo, tamano_kb, descripcion, fecha_subida,
+                                 subido_por, activo
                           FROM archivos_comercios 
-                          WHERE id_comercio = @IdComercio AND activo = true
+                          WHERE id_comercio = @IdComercio AND (activo IS NULL OR activo = true)
                           ORDER BY fecha_subida DESC";
             
             using var cmd = new NpgsqlCommand(query, connection);
@@ -56,14 +56,13 @@ public class ArchivoService
                     IdArchivo = reader.GetInt32(0),
                     IdComercio = reader.GetInt32(1),
                     NombreArchivo = reader.GetString(2),
-                    NombreOriginal = reader.GetString(3),
-                    TipoArchivo = reader.IsDBNull(4) ? null : reader.GetString(4),
-                    TamanoBytes = reader.IsDBNull(5) ? null : reader.GetInt64(5),
-                    RutaArchivo = reader.GetString(6),
-                    Descripcion = reader.IsDBNull(7) ? null : reader.GetString(7),
-                    FechaSubida = reader.GetDateTime(8),
-                    SubidoPor = reader.IsDBNull(9) ? null : reader.GetString(9),
-                    Activo = reader.GetBoolean(10)
+                    RutaArchivo = reader.GetString(3),
+                    TipoArchivo = reader.GetString(4),
+                    TamanoKb = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    Descripcion = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    FechaSubida = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
+                    SubidoPor = reader.IsDBNull(8) ? null : reader.GetInt32(8),
+                    Activo = reader.IsDBNull(9) ? null : reader.GetBoolean(9)
                 });
             }
         }
@@ -96,31 +95,35 @@ public class ArchivoService
             
             // Copiar archivo
             File.Copy(rutaArchivoLocal, rutaDestino, overwrite: true);
-            var tamano = new FileInfo(rutaDestino).Length;
             
-            // Determinar tipo MIME
-            var tipoMime = ObtenerTipoMime(extension);
+            // Calcular tamaño en KB
+            var tamanoBytes = new FileInfo(rutaDestino).Length;
+            var tamanoKb = (int)(tamanoBytes / 1024);
+            if (tamanoKb == 0 && tamanoBytes > 0) tamanoKb = 1; // Mínimo 1 KB
+            
+            // Determinar tipo de archivo (texto descriptivo, no MIME)
+            var tipoArchivo = ObtenerTipoArchivo(extension);
             
             // Guardar en BD
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
             var query = @"INSERT INTO archivos_comercios 
-                          (id_comercio, nombre_archivo, nombre_original, tipo_archivo, 
-                           tamano_bytes, ruta_archivo, descripcion, subido_por)
-                          VALUES (@IdComercio, @NombreArchivo, @NombreOriginal, @TipoArchivo,
-                                  @Tamano, @Ruta, @Descripcion, @Usuario)
+                          (id_comercio, nombre_archivo, ruta_archivo, tipo_archivo, 
+                           tamano_kb, descripcion, fecha_subida, activo)
+                          VALUES (@IdComercio, @NombreArchivo, @Ruta, @TipoArchivo,
+                                  @TamanoKb, @Descripcion, @FechaSubida, @Activo)
                           RETURNING id_archivo";
             
             using var cmd = new NpgsqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@IdComercio", idComercio);
             cmd.Parameters.AddWithValue("@NombreArchivo", nombreUnico);
-            cmd.Parameters.AddWithValue("@NombreOriginal", nombreOriginal);
-            cmd.Parameters.AddWithValue("@TipoArchivo", tipoMime);
-            cmd.Parameters.AddWithValue("@Tamano", tamano);
             cmd.Parameters.AddWithValue("@Ruta", rutaDestino);
+            cmd.Parameters.AddWithValue("@TipoArchivo", tipoArchivo);
+            cmd.Parameters.AddWithValue("@TamanoKb", (object?)tamanoKb ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Descripcion", (object?)descripcion ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Usuario", usuario);
+            cmd.Parameters.AddWithValue("@FechaSubida", DateTime.Now);
+            cmd.Parameters.AddWithValue("@Activo", true);
             
             return (int)(await cmd.ExecuteScalarAsync())!;
         }
@@ -168,7 +171,37 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Descarga un archivo (devuelve la ruta para abrir)
+    /// Descarga un archivo a una ubicación específica
+    /// </summary>
+    public async Task DescargarArchivo(int idArchivo, string rutaDestino)
+    {
+        try
+        {
+            var rutaOrigen = await ObtenerRutaArchivo(idArchivo);
+            
+            if (string.IsNullOrEmpty(rutaOrigen))
+                throw new FileNotFoundException("Archivo no encontrado en la base de datos");
+            
+            if (!File.Exists(rutaOrigen))
+                throw new FileNotFoundException("Archivo físico no encontrado", rutaOrigen);
+            
+            // Crear directorio de destino si no existe
+            var directorioDestino = Path.GetDirectoryName(rutaDestino);
+            if (!string.IsNullOrEmpty(directorioDestino))
+                Directory.CreateDirectory(directorioDestino);
+            
+            // Copiar archivo
+            File.Copy(rutaOrigen, rutaDestino, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error descargando archivo: {ex.Message}");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Obtiene la ruta de un archivo (devuelve la ruta para abrir)
     /// </summary>
     public async Task<string?> ObtenerRutaArchivo(int idArchivo)
     {
@@ -177,7 +210,7 @@ public class ArchivoService
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
-            var query = "SELECT ruta_archivo FROM archivos_comercios WHERE id_archivo = @Id AND activo = true";
+            var query = "SELECT ruta_archivo FROM archivos_comercios WHERE id_archivo = @Id AND (activo IS NULL OR activo = true)";
             using var cmd = new NpgsqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@Id", idArchivo);
             
@@ -191,7 +224,31 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Obtiene el tipo MIME según la extensión
+    /// Obtiene el tipo de archivo según la extensión (texto descriptivo)
+    /// </summary>
+    private string ObtenerTipoArchivo(string extension)
+    {
+        return extension.ToLower() switch
+        {
+            ".pdf" => "PDF",
+            ".png" => "Imagen PNG",
+            ".jpg" => "Imagen JPEG",
+            ".jpeg" => "Imagen JPEG",
+            ".gif" => "Imagen GIF",
+            ".bmp" => "Imagen BMP",
+            ".txt" => "Texto",
+            ".doc" => "Documento Word",
+            ".docx" => "Documento Word",
+            ".xls" => "Hoja de Cálculo",
+            ".xlsx" => "Hoja de Cálculo",
+            ".zip" => "Archivo ZIP",
+            ".rar" => "Archivo RAR",
+            _ => "Archivo"
+        };
+    }
+    
+    /// <summary>
+    /// Obtiene el tipo MIME según la extensión (mantener por compatibilidad)
     /// </summary>
     private string ObtenerTipoMime(string extension)
     {

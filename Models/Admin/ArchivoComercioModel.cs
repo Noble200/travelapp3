@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Allva.Desktop.Models.Admin;
 
@@ -21,24 +22,19 @@ public class ArchivoComercioModel
     public string NombreArchivo { get; set; } = string.Empty;
     
     /// <summary>
-    /// Nombre original del archivo subido por el usuario
-    /// </summary>
-    public string NombreOriginal { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Tipo MIME del archivo (pdf, png, jpg, txt, etc)
-    /// </summary>
-    public string? TipoArchivo { get; set; }
-    
-    /// <summary>
-    /// Tamaño del archivo en bytes
-    /// </summary>
-    public long? TamanoBytes { get; set; }
-    
-    /// <summary>
     /// Ruta completa del archivo en el servidor
     /// </summary>
     public string RutaArchivo { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Tipo de archivo (PDF, Documento Word, Imagen JPEG, etc)
+    /// </summary>
+    public string TipoArchivo { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Tamaño del archivo en KB (kilobytes)
+    /// </summary>
+    public int? TamanoKb { get; set; }
     
     /// <summary>
     /// Descripción opcional del archivo
@@ -48,21 +44,50 @@ public class ArchivoComercioModel
     /// <summary>
     /// Fecha y hora de subida del archivo
     /// </summary>
-    public DateTime FechaSubida { get; set; } = DateTime.Now;
+    public DateTime? FechaSubida { get; set; }
     
     /// <summary>
-    /// Usuario que subió el archivo
+    /// ID del usuario que subió el archivo
     /// </summary>
-    public string? SubidoPor { get; set; }
+    public int? SubidoPor { get; set; }
     
     /// <summary>
     /// Indica si el archivo está activo (no eliminado)
     /// </summary>
-    public bool Activo { get; set; } = true;
+    public bool? Activo { get; set; }
     
     // ============================================
     // PROPIEDADES CALCULADAS PARA UI
     // ============================================
+    
+    /// <summary>
+    /// Nombre original del archivo (extraído del nombre_archivo)
+    /// </summary>
+    public string NombreOriginal
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(NombreArchivo))
+                return string.Empty;
+            
+            // Si el nombre contiene UUID, intentar extraer el nombre original
+            // Formato esperado: "comercio_fecha_uuid.ext"
+            var partes = NombreArchivo.Split('_');
+            if (partes.Length >= 3)
+            {
+                // Tomar desde la tercera parte en adelante y reconstruir
+                var nombreConExt = string.Join("_", partes.Skip(2));
+                return nombreConExt;
+            }
+            
+            return NombreArchivo;
+        }
+    }
+    
+    /// <summary>
+    /// Tamaño en bytes calculado desde KB
+    /// </summary>
+    public long? TamanoBytes => TamanoKb.HasValue ? TamanoKb.Value * 1024L : null;
     
     /// <summary>
     /// Tamaño formateado para mostrar en UI (KB, MB)
@@ -71,16 +96,31 @@ public class ArchivoComercioModel
     {
         get
         {
-            if (!TamanoBytes.HasValue) return "N/A";
+            if (!TamanoKb.HasValue) return "N/A";
             
-            if (TamanoBytes.Value < 1024)
-                return $"{TamanoBytes.Value} B";
-            else if (TamanoBytes.Value < 1024 * 1024)
-                return $"{TamanoBytes.Value / 1024.0:F2} KB";
-            else if (TamanoBytes.Value < 1024 * 1024 * 1024)
-                return $"{TamanoBytes.Value / (1024.0 * 1024.0):F2} MB";
+            var kb = TamanoKb.Value;
+            
+            if (kb < 1024)
+                return $"{kb} KB";
+            else if (kb < 1024 * 1024)
+                return $"{kb / 1024.0:F2} MB";
             else
-                return $"{TamanoBytes.Value / (1024.0 * 1024.0 * 1024.0):F2} GB";
+                return $"{kb / (1024.0 * 1024.0):F2} GB";
+        }
+    }
+    
+    /// <summary>
+    /// Extensión del archivo extraída del nombre
+    /// </summary>
+    public string Extension
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(NombreArchivo))
+                return string.Empty;
+            
+            var puntoIndex = NombreArchivo.LastIndexOf('.');
+            return puntoIndex >= 0 ? NombreArchivo.Substring(puntoIndex) : string.Empty;
         }
     }
     
@@ -91,25 +131,30 @@ public class ArchivoComercioModel
     {
         get
         {
-            if (string.IsNullOrEmpty(TipoArchivo)) return "📎";
+            var ext = Extension.ToLower();
             
-            var tipo = TipoArchivo.ToLower();
-            
-            if (tipo.Contains("pdf")) return "📄";
-            if (tipo.Contains("image") || tipo.Contains("png") || tipo.Contains("jpg") || tipo.Contains("jpeg")) return "🖼️";
-            if (tipo.Contains("text") || tipo.Contains("txt")) return "📝";
-            if (tipo.Contains("word") || tipo.Contains("doc")) return "📃";
-            if (tipo.Contains("excel") || tipo.Contains("xls")) return "📊";
-            if (tipo.Contains("zip") || tipo.Contains("rar")) return "📦";
-            
-            return "📎";
+            return ext switch
+            {
+                ".pdf" => "📄",
+                ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" => "🖼️",
+                ".txt" => "📝",
+                ".doc" or ".docx" => "📃",
+                ".xls" or ".xlsx" => "📊",
+                ".zip" or ".rar" => "📦",
+                _ => "📎"
+            };
         }
     }
     
     /// <summary>
     /// Fecha formateada para mostrar en UI
     /// </summary>
-    public string FechaFormateada => FechaSubida.ToString("dd/MM/yyyy HH:mm");
+    public string FechaFormateada => FechaSubida?.ToString("dd/MM/yyyy HH:mm") ?? "Sin fecha";
+    
+    /// <summary>
+    /// Usuario que subió (como string para compatibilidad)
+    /// </summary>
+    public string SubidoPorTexto => SubidoPor.HasValue ? $"Usuario ID: {SubidoPor.Value}" : "Desconocido";
     
     /// <summary>
     /// Información completa del archivo para tooltip
@@ -119,5 +164,5 @@ public class ArchivoComercioModel
         $"Tamaño: {TamanoFormateado}\n" +
         $"Tipo: {TipoArchivo}\n" +
         $"Subido: {FechaFormateada}\n" +
-        $"Por: {SubidoPor ?? "Desconocido"}";
+        $"Por: {SubidoPorTexto}";
 }
