@@ -498,14 +498,8 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Margin="6,0,0,0">
                                             <TextBlock Text="País *" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                            <ComboBox SelectedItem="{Binding FormPais}" HorizontalAlignment="Stretch">
-                                                <ComboBoxItem Content="Argentina"/>
-                                                <ComboBoxItem Content="España"/>
-                                                <ComboBoxItem Content="México"/>
-                                                <ComboBoxItem Content="Chile"/>
-                                                <ComboBoxItem Content="Colombia"/>
-                                                <ComboBoxItem Content="Perú"/>
-                                            </ComboBox>
+                                            <TextBox Text="{Binding FormPais}" 
+                                                     Watermark="Argentina, España, México..."/>
                                         </StackPanel>
                                     </Grid>
 
@@ -640,11 +634,29 @@
                                                             </StackPanel>
                                                         </Grid>
 
-                                                        <!-- Dirección -->
-                                                        <StackPanel>
-                                                            <TextBlock Text="Dirección" FontSize="12" Margin="0,0,0,4"/>
-                                                            <TextBox Text="{Binding Direccion}" Watermark="Calle, Avenida..."/>
-                                                        </StackPanel>
+                                                        <!-- País y Código Postal -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                                                                <TextBlock Text="País" FontSize="12" Margin="0,0,0,4"/>
+                                                                <TextBox Text="{Binding Pais}" Watermark="Argentina, España..."/>
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                                                <TextBlock Text="Código Postal" FontSize="12" Margin="0,0,0,4"/>
+                                                                <TextBox Text="{Binding CodigoPostal}" Watermark="9000, 28001..."/>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Tipo de Vía y Dirección -->
+                                                        <Grid ColumnDefinitions="*,2*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                                                                <TextBlock Text="Tipo de Vía" FontSize="12" Margin="0,0,0,4"/>
+                                                                <TextBox Text="{Binding TipoVia}" Watermark="Calle, Avenida..."/>
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                                                <TextBlock Text="Dirección" FontSize="12" Margin="0,0,0,4"/>
+                                                                <TextBox Text="{Binding Direccion}" Watermark="Nombre de la vía..."/>
+                                                            </StackPanel>
+                                                        </Grid>
 
                                                         <!-- Número, Escalera, Piso -->
                                                         <Grid ColumnDefinitions="*,*,*">
@@ -690,6 +702,25 @@
                                                                 <CheckBox Grid.Row="1" Grid.Column="1" 
                                                                           IsChecked="{Binding ModuloPackViajes}" 
                                                                           Content="Pack Viajes" FontSize="12"/>
+                                                            </Grid>
+                                                        </StackPanel>
+
+                                                        <!-- Comisión de Divisas -->
+                                                        <StackPanel>
+                                                            <TextBlock Text="Comisión de Divisas (%)" 
+                                                                       FontSize="12" 
+                                                                       FontWeight="SemiBold" 
+                                                                       Margin="0,4,0,4"/>
+                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                <TextBox Grid.Column="0" 
+                                                                         Text="{Binding ComisionDivisas}" 
+                                                                         Watermark="0.00"
+                                                                         Margin="0,0,8,0"/>
+                                                                <TextBlock Grid.Column="1" 
+                                                                           Text="%" 
+                                                                           FontSize="14" 
+                                                                           VerticalAlignment="Center"
+                                                                           FontWeight="SemiBold"/>
                                                             </Grid>
                                                         </StackPanel>
 

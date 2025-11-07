@@ -460,22 +460,28 @@ public partial class ManageComerciosViewModel : ObservableObject
             {
                 var queryLocal = @"
                     INSERT INTO locales (
-                        id_comercio, codigo_local, nombre_local, direccion, local_numero,
+                        id_comercio, codigo_local, nombre_local, 
+                        pais, codigo_postal, tipo_via, direccion, local_numero,
                         escalera, piso, telefono, email, numero_usuarios_max,
                         observaciones, activo, modulo_divisas, modulo_pack_alimentos,
-                        modulo_billetes_avion, modulo_pack_viajes
+                        modulo_billetes_avion, modulo_pack_viajes, comision_divisas
                     )
                     VALUES (
-                        @IdComercio, @CodigoLocal, @NombreLocal, @Direccion, @LocalNumero,
+                        @IdComercio, @CodigoLocal, @NombreLocal,
+                        @Pais, @CodigoPostal, @TipoVia, @Direccion, @LocalNumero,
                         @Escalera, @Piso, @Telefono, @Email, @NumeroUsuariosMax,
                         @Observaciones, @Activo, @ModuloDivisas, @ModuloPackAlimentos,
-                        @ModuloBilletesAvion, @ModuloPackViajes
+                        @ModuloBilletesAvion, @ModuloPackViajes, @ComisionDivisas
                     )";
                 
                 using var cmdLocal = new NpgsqlCommand(queryLocal, connection, transaction);
                 cmdLocal.Parameters.AddWithValue("@IdComercio", idComercio);
                 cmdLocal.Parameters.AddWithValue("@CodigoLocal", local.CodigoLocal);
                 cmdLocal.Parameters.AddWithValue("@NombreLocal", local.NombreLocal);
+                cmdLocal.Parameters.AddWithValue("@Pais", local.Pais ?? string.Empty);
+                cmdLocal.Parameters.AddWithValue("@CodigoPostal", local.CodigoPostal ?? string.Empty);
+                cmdLocal.Parameters.AddWithValue("@TipoVia", local.TipoVia ?? string.Empty);
+                cmdLocal.Parameters.AddWithValue("@Direccion", local.Direccion ?? string.Empty);
                 cmdLocal.Parameters.AddWithValue("@Direccion", local.Direccion ?? string.Empty);
                 cmdLocal.Parameters.AddWithValue("@LocalNumero", local.LocalNumero ?? string.Empty);
                 cmdLocal.Parameters.AddWithValue("@Escalera", 
@@ -494,6 +500,7 @@ public partial class ManageComerciosViewModel : ObservableObject
                 cmdLocal.Parameters.AddWithValue("@ModuloPackAlimentos", local.ModuloPackAlimentos);
                 cmdLocal.Parameters.AddWithValue("@ModuloBilletesAvion", local.ModuloBilletesAvion);
                 cmdLocal.Parameters.AddWithValue("@ModuloPackViajes", local.ModuloPackViajes);
+                cmdLocal.Parameters.AddWithValue("@ComisionDivisas", local.ComisionDivisas);
                 
                 await cmdLocal.ExecuteNonQueryAsync();
             }
@@ -505,7 +512,7 @@ public partial class ManageComerciosViewModel : ObservableObject
                 {
                     try
                     {
-                        await _archivoService.SubirArchivo(idComercio, rutaArchivo, null, "admin");
+                        await _archivoService.SubirArchivo(idComercio, rutaArchivo, null, null);
                     }
                     catch (Exception ex)
                     {
@@ -622,7 +629,7 @@ public partial class ManageComerciosViewModel : ObservableObject
                 {
                     try
                     {
-                        await _archivoService.SubirArchivo(ComercioSeleccionado.IdComercio, rutaArchivo, null, "admin");
+                        await _archivoService.SubirArchivo(ComercioSeleccionado.IdComercio, rutaArchivo, null, null);
                     }
                     catch (Exception ex)
                     {

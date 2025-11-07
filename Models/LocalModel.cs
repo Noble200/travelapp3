@@ -4,7 +4,7 @@ namespace Allva.Desktop.Models;
 
 /// <summary>
 /// Modelo auxiliar para gestionar locales en el formulario
-/// ACTUALIZADO: Con todos los campos de la base de datos + IdComercio
+/// ACTUALIZADO: Con todos los campos de la base de datos + campos según Datos_Allva.txt
 /// </summary>
 public class LocalFormModel
 {
@@ -20,8 +20,27 @@ public class LocalFormModel
     public string NombreLocal { get; set; } = string.Empty;
     
     // ============================================
+    // UBICACIÓN GEOGRÁFICA - NUEVOS CAMPOS
+    // ============================================
+    
+    /// <summary>
+    /// País donde se ubica el local
+    /// </summary>
+    public string Pais { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Código postal del local
+    /// </summary>
+    public string CodigoPostal { get; set; } = string.Empty;
+    
+    // ============================================
     // DIRECCIÓN COMPLETA (SEGÚN BASE DE DATOS)
     // ============================================
+    
+    /// <summary>
+    /// Tipo de vía (Calle, Avenida, Pasaje, etc)
+    /// </summary>
+    public string TipoVia { get; set; } = string.Empty;
     
     /// <summary>
     /// Dirección principal (calle, avenida, etc)
@@ -83,6 +102,15 @@ public class LocalFormModel
     public bool ModuloPackViajes { get; set; } = false;
     
     // ============================================
+    // CONFIGURACIÓN DE COMISIONES - NUEVO CAMPO
+    // ============================================
+    
+    /// <summary>
+    /// Porcentaje de comisión de divisas específico para este local
+    /// </summary>
+    public decimal ComisionDivisas { get; set; } = 0;
+    
+    // ============================================
     // PROPIEDADES CALCULADAS
     // ============================================
     
@@ -95,6 +123,9 @@ public class LocalFormModel
         {
             var partes = new List<string>();
             
+            if (!string.IsNullOrWhiteSpace(TipoVia))
+                partes.Add(TipoVia);
+            
             if (!string.IsNullOrWhiteSpace(Direccion))
                 partes.Add(Direccion);
             
@@ -106,6 +137,12 @@ public class LocalFormModel
             
             if (!string.IsNullOrWhiteSpace(Piso))
                 partes.Add($"Piso {Piso}");
+            
+            if (!string.IsNullOrWhiteSpace(CodigoPostal))
+                partes.Add($"CP {CodigoPostal}");
+                
+            if (!string.IsNullOrWhiteSpace(Pais))
+                partes.Add(Pais);
             
             return partes.Count > 0 
                 ? string.Join(", ", partes) 

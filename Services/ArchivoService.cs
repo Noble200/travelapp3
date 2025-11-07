@@ -11,6 +11,7 @@ namespace Allva.Desktop.Services;
 /// <summary>
 /// Servicio para gestión de archivos de comercios
 /// Maneja la subida, descarga y eliminación de archivos
+/// VERSIÓN CORREGIDA - SubidoPor como integer
 /// </summary>
 public class ArchivoService
 {
@@ -23,6 +24,7 @@ public class ArchivoService
         if (!Directory.Exists(CarpetaArchivos))
         {
             Directory.CreateDirectory(CarpetaArchivos);
+            Console.WriteLine($"📁 Carpeta creada: {Path.GetFullPath(CarpetaArchivos)}");
         }
     }
     
@@ -35,11 +37,13 @@ public class ArchivoService
         
         try
         {
+            Console.WriteLine($"📥 ObtenerArchivosPorComercio - ID Comercio: {idComercio}");
+            
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
             var query = @"SELECT id_archivo, id_comercio, nombre_archivo, ruta_archivo,
-                                 tipo_archivo, tamano_kb, descripcion, fecha_subida,
+                                 tipo_archivo, tamanio_kb, descripcion, fecha_subida,
                                  subido_por, activo
                           FROM archivos_comercios 
                           WHERE id_comercio = @IdComercio AND (activo IS NULL OR activo = true)
@@ -65,10 +69,13 @@ public class ArchivoService
                     Activo = reader.IsDBNull(9) ? null : reader.GetBoolean(9)
                 });
             }
+            
+            Console.WriteLine($"📦 Archivos encontrados: {archivos.Count}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error obteniendo archivos: {ex.Message}");
+            Console.WriteLine($"❌ Error obteniendo archivos: {ex.Message}");
+            Console.WriteLine($"   StackTrace: {ex.StackTrace}");
         }
         
         return archivos;
@@ -77,11 +84,20 @@ public class ArchivoService
     /// <summary>
     /// Sube un archivo al servidor y lo registra en la base de datos
     /// </summary>
+    /// <param name="idComercio">ID del comercio</param>
+    /// <param name="rutaArchivoLocal">Ruta del archivo en el sistema local</param>
+    /// <param name="descripcion">Descripción opcional del archivo</param>
+    /// <param name="idUsuario">ID del usuario que sube el archivo (nullable)</param>
     public async Task<int> SubirArchivo(int idComercio, string rutaArchivoLocal, 
-                                         string? descripcion, string usuario)
+                                         string? descripcion, int? idUsuario)
     {
         try
         {
+            Console.WriteLine($"📤 SubirArchivo - Inicio");
+            Console.WriteLine($"   ID Comercio: {idComercio}");
+            Console.WriteLine($"   Archivo: {rutaArchivoLocal}");
+            Console.WriteLine($"   ID Usuario: {idUsuario}");
+            
             // Validar que el archivo existe
             if (!File.Exists(rutaArchivoLocal))
             {
@@ -93,26 +109,34 @@ public class ArchivoService
             var nombreUnico = $"{idComercio}_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N").Substring(0, 8)}{extension}";
             var rutaDestino = Path.Combine(CarpetaArchivos, nombreUnico);
             
+            Console.WriteLine($"   Nombre único: {nombreUnico}");
+            Console.WriteLine($"   Ruta destino: {rutaDestino}");
+            
             // Copiar archivo
             File.Copy(rutaArchivoLocal, rutaDestino, overwrite: true);
+            Console.WriteLine($"   ✅ Archivo copiado exitosamente");
             
             // Calcular tamaño en KB
             var tamanoBytes = new FileInfo(rutaDestino).Length;
             var tamanoKb = (int)(tamanoBytes / 1024);
             if (tamanoKb == 0 && tamanoBytes > 0) tamanoKb = 1; // Mínimo 1 KB
             
+            Console.WriteLine($"   Tamaño: {tamanoKb} KB ({tamanoBytes} bytes)");
+            
             // Determinar tipo de archivo (texto descriptivo, no MIME)
             var tipoArchivo = ObtenerTipoArchivo(extension);
+            Console.WriteLine($"   Tipo: {tipoArchivo}");
             
             // Guardar en BD
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
+            Console.WriteLine($"   📡 Conexión a BD establecida");
             
             var query = @"INSERT INTO archivos_comercios 
                           (id_comercio, nombre_archivo, ruta_archivo, tipo_archivo, 
-                           tamano_kb, descripcion, fecha_subida, activo)
+                           tamanio_kb, descripcion, fecha_subida, subido_por, activo)
                           VALUES (@IdComercio, @NombreArchivo, @Ruta, @TipoArchivo,
-                                  @TamanoKb, @Descripcion, @FechaSubida, @Activo)
+                                  @TamanoKb, @Descripcion, @FechaSubida, @SubidoPor, @Activo)
                           RETURNING id_archivo";
             
             using var cmd = new NpgsqlCommand(query, connection);
@@ -123,13 +147,19 @@ public class ArchivoService
             cmd.Parameters.AddWithValue("@TamanoKb", (object?)tamanoKb ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Descripcion", (object?)descripcion ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@FechaSubida", DateTime.Now);
+            cmd.Parameters.AddWithValue("@SubidoPor", (object?)idUsuario ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Activo", true);
             
-            return (int)(await cmd.ExecuteScalarAsync())!;
+            var idArchivo = (int)(await cmd.ExecuteScalarAsync())!;
+            
+            Console.WriteLine($"✅ Archivo guardado exitosamente con ID: {idArchivo}");
+            
+            return idArchivo;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error subiendo archivo: {ex.Message}");
+            Console.WriteLine($"❌ ERROR en SubirArchivo: {ex.Message}");
+            Console.WriteLine($"   StackTrace: {ex.StackTrace}");
             throw;
         }
     }
@@ -141,6 +171,8 @@ public class ArchivoService
     {
         try
         {
+            Console.WriteLine($"🗑️ EliminarArchivo - ID: {idArchivo}");
+            
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
@@ -154,6 +186,7 @@ public class ArchivoService
             if (!string.IsNullOrEmpty(ruta) && File.Exists(ruta))
             {
                 File.Delete(ruta);
+                Console.WriteLine($"   ✅ Archivo físico eliminado: {ruta}");
             }
             
             // Marcar como inactivo en BD
@@ -161,11 +194,14 @@ public class ArchivoService
             using var cmdUpdate = new NpgsqlCommand(queryUpdate, connection);
             cmdUpdate.Parameters.AddWithValue("@Id", idArchivo);
             
-            return await cmdUpdate.ExecuteNonQueryAsync() > 0;
+            var resultado = await cmdUpdate.ExecuteNonQueryAsync() > 0;
+            Console.WriteLine($"   {(resultado ? "✅" : "❌")} Registro actualizado en BD");
+            
+            return resultado;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error eliminando archivo: {ex.Message}");
+            Console.WriteLine($"❌ Error eliminando archivo: {ex.Message}");
             return false;
         }
     }
@@ -177,6 +213,9 @@ public class ArchivoService
     {
         try
         {
+            Console.WriteLine($"⬇️ DescargarArchivo - ID: {idArchivo}");
+            Console.WriteLine($"   Destino: {rutaDestino}");
+            
             var rutaOrigen = await ObtenerRutaArchivo(idArchivo);
             
             if (string.IsNullOrEmpty(rutaOrigen))
@@ -192,10 +231,11 @@ public class ArchivoService
             
             // Copiar archivo
             File.Copy(rutaOrigen, rutaDestino, overwrite: true);
+            Console.WriteLine($"   ✅ Archivo descargado exitosamente");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error descargando archivo: {ex.Message}");
+            Console.WriteLine($"❌ Error descargando archivo: {ex.Message}");
             throw;
         }
     }
@@ -218,7 +258,7 @@ public class ArchivoService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error obteniendo ruta de archivo: {ex.Message}");
+            Console.WriteLine($"❌ Error obteniendo ruta de archivo: {ex.Message}");
             return null;
         }
     }
@@ -248,35 +288,14 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Obtiene el tipo MIME según la extensión (mantener por compatibilidad)
-    /// </summary>
-    private string ObtenerTipoMime(string extension)
-    {
-        return extension.ToLower() switch
-        {
-            ".pdf" => "application/pdf",
-            ".png" => "image/png",
-            ".jpg" => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".txt" => "text/plain",
-            ".doc" => "application/msword",
-            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ".xls" => "application/vnd.ms-excel",
-            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            ".zip" => "application/zip",
-            ".rar" => "application/x-rar-compressed",
-            _ => "application/octet-stream"
-        };
-    }
-    
-    /// <summary>
     /// Elimina todos los archivos de un comercio
     /// </summary>
     public async Task<int> EliminarArchivosDeComercio(int idComercio)
     {
         try
         {
+            Console.WriteLine($"🗑️ EliminarArchivosDeComercio - ID Comercio: {idComercio}");
+            
             var archivos = await ObtenerArchivosPorComercio(idComercio);
             int eliminados = 0;
             
@@ -288,11 +307,13 @@ public class ArchivoService
                 }
             }
             
+            Console.WriteLine($"   ✅ Archivos eliminados: {eliminados}");
+            
             return eliminados;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error eliminando archivos del comercio: {ex.Message}");
+            Console.WriteLine($"❌ Error eliminando archivos del comercio: {ex.Message}");
             return 0;
         }
     }
