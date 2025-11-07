@@ -10,26 +10,15 @@ namespace Allva.Desktop.Services;
 
 /// <summary>
 /// Servicio para gestión de archivos de comercios
-/// Maneja la subida, descarga y eliminación de archivos
-/// VERSIÓN CORREGIDA - SubidoPor como integer
+/// NUEVA VERSIÓN: Archivos guardados en la tabla comercios como BYTEA
+/// Los archivos se almacenan en arrays dentro de la tabla comercios
 /// </summary>
 public class ArchivoService
 {
     private const string ConnectionString = "Host=switchyard.proxy.rlwy.net;Port=55839;Database=railway;Username=postgres;Password=ysTQxChOYSWUuAPzmYQokqrjpYnKSGbk;";
-    private const string CarpetaArchivos = "archivos_comercios";
-    
-    public ArchivoService()
-    {
-        // Crear carpeta si no existe
-        if (!Directory.Exists(CarpetaArchivos))
-        {
-            Directory.CreateDirectory(CarpetaArchivos);
-            Console.WriteLine($"📁 Carpeta creada: {Path.GetFullPath(CarpetaArchivos)}");
-        }
-    }
     
     /// <summary>
-    /// Obtiene todos los archivos activos de un comercio
+    /// Obtiene todos los archivos de un comercio desde los arrays en la BD
     /// </summary>
     public async Task<List<ArchivoComercioModel>> ObtenerArchivosPorComercio(int idComercio)
     {
@@ -42,32 +31,38 @@ public class ArchivoService
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
-            var query = @"SELECT id_archivo, id_comercio, nombre_archivo, ruta_archivo,
-                                 tipo_archivo, tamanio_kb, descripcion, fecha_subida,
-                                 subido_por, activo
-                          FROM archivos_comercios 
-                          WHERE id_comercio = @IdComercio AND (activo IS NULL OR activo = true)
-                          ORDER BY fecha_subida DESC";
+            var query = @"SELECT archivos_contenido, archivos_nombres, archivos_tipos, archivos_tamanos
+                          FROM comercios 
+                          WHERE id_comercio = @IdComercio";
             
             using var cmd = new NpgsqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@IdComercio", idComercio);
             
             using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            if (await reader.ReadAsync())
             {
-                archivos.Add(new ArchivoComercioModel
+                // Leer los arrays de la BD
+                var contenidos = reader.IsDBNull(0) ? null : (byte[][])reader.GetValue(0);
+                var nombres = reader.IsDBNull(1) ? null : (string[])reader.GetValue(1);
+                var tipos = reader.IsDBNull(2) ? null : (string[])reader.GetValue(2);
+                var tamanos = reader.IsDBNull(3) ? null : (int[])reader.GetValue(3);
+                
+                // Convertir arrays a lista de objetos
+                if (nombres != null && nombres.Length > 0)
                 {
-                    IdArchivo = reader.GetInt32(0),
-                    IdComercio = reader.GetInt32(1),
-                    NombreArchivo = reader.GetString(2),
-                    RutaArchivo = reader.GetString(3),
-                    TipoArchivo = reader.GetString(4),
-                    TamanoKb = reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                    Descripcion = reader.IsDBNull(6) ? null : reader.GetString(6),
-                    FechaSubida = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
-                    SubidoPor = reader.IsDBNull(8) ? null : reader.GetInt32(8),
-                    Activo = reader.IsDBNull(9) ? null : reader.GetBoolean(9)
-                });
+                    for (int i = 0; i < nombres.Length; i++)
+                    {
+                        archivos.Add(new ArchivoComercioModel
+                        {
+                            IdArchivo = i, // Usar el índice como ID
+                            IdComercio = idComercio,
+                            NombreArchivo = nombres[i],
+                            TipoArchivo = tipos?[i] ?? "Archivo",
+                            TamanoKb = tamanos?[i],
+                            Activo = true
+                        });
+                    }
+                }
             }
             
             Console.WriteLine($"📦 Archivos encontrados: {archivos.Count}");
@@ -82,12 +77,8 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Sube un archivo al servidor y lo registra en la base de datos
+    /// Sube un archivo y lo agrega a los arrays del comercio en la BD
     /// </summary>
-    /// <param name="idComercio">ID del comercio</param>
-    /// <param name="rutaArchivoLocal">Ruta del archivo en el sistema local</param>
-    /// <param name="descripcion">Descripción opcional del archivo</param>
-    /// <param name="idUsuario">ID del usuario que sube el archivo (nullable)</param>
     public async Task<int> SubirArchivo(int idComercio, string rutaArchivoLocal, 
                                          string? descripcion, int? idUsuario)
     {
@@ -96,7 +87,6 @@ public class ArchivoService
             Console.WriteLine($"📤 SubirArchivo - Inicio");
             Console.WriteLine($"   ID Comercio: {idComercio}");
             Console.WriteLine($"   Archivo: {rutaArchivoLocal}");
-            Console.WriteLine($"   ID Usuario: {idUsuario}");
             
             // Validar que el archivo existe
             if (!File.Exists(rutaArchivoLocal))
@@ -104,57 +94,87 @@ public class ArchivoService
                 throw new FileNotFoundException("El archivo no existe", rutaArchivoLocal);
             }
             
-            var nombreOriginal = Path.GetFileName(rutaArchivoLocal);
+            // Leer el archivo como bytes
+            var contenidoArchivo = await File.ReadAllBytesAsync(rutaArchivoLocal);
+            var nombreArchivo = Path.GetFileName(rutaArchivoLocal);
             var extension = Path.GetExtension(rutaArchivoLocal);
-            var nombreUnico = $"{idComercio}_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N").Substring(0, 8)}{extension}";
-            var rutaDestino = Path.Combine(CarpetaArchivos, nombreUnico);
-            
-            Console.WriteLine($"   Nombre único: {nombreUnico}");
-            Console.WriteLine($"   Ruta destino: {rutaDestino}");
-            
-            // Copiar archivo
-            File.Copy(rutaArchivoLocal, rutaDestino, overwrite: true);
-            Console.WriteLine($"   ✅ Archivo copiado exitosamente");
-            
-            // Calcular tamaño en KB
-            var tamanoBytes = new FileInfo(rutaDestino).Length;
-            var tamanoKb = (int)(tamanoBytes / 1024);
-            if (tamanoKb == 0 && tamanoBytes > 0) tamanoKb = 1; // Mínimo 1 KB
-            
-            Console.WriteLine($"   Tamaño: {tamanoKb} KB ({tamanoBytes} bytes)");
-            
-            // Determinar tipo de archivo (texto descriptivo, no MIME)
             var tipoArchivo = ObtenerTipoArchivo(extension);
-            Console.WriteLine($"   Tipo: {tipoArchivo}");
+            var tamanoKb = (int)(contenidoArchivo.Length / 1024);
+            if (tamanoKb == 0 && contenidoArchivo.Length > 0) tamanoKb = 1;
             
-            // Guardar en BD
+            Console.WriteLine($"   Nombre: {nombreArchivo}");
+            Console.WriteLine($"   Tipo: {tipoArchivo}");
+            Console.WriteLine($"   Tamaño: {tamanoKb} KB");
+            
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
-            Console.WriteLine($"   📡 Conexión a BD establecida");
             
-            var query = @"INSERT INTO archivos_comercios 
-                          (id_comercio, nombre_archivo, ruta_archivo, tipo_archivo, 
-                           tamanio_kb, descripcion, fecha_subida, subido_por, activo)
-                          VALUES (@IdComercio, @NombreArchivo, @Ruta, @TipoArchivo,
-                                  @TamanoKb, @Descripcion, @FechaSubida, @SubidoPor, @Activo)
-                          RETURNING id_archivo";
+            // Obtener arrays existentes
+            var querySelect = @"SELECT archivos_contenido, archivos_nombres, archivos_tipos, archivos_tamanos
+                               FROM comercios WHERE id_comercio = @IdComercio";
             
-            using var cmd = new NpgsqlCommand(query, connection);
-            cmd.Parameters.AddWithValue("@IdComercio", idComercio);
-            cmd.Parameters.AddWithValue("@NombreArchivo", nombreUnico);
-            cmd.Parameters.AddWithValue("@Ruta", rutaDestino);
-            cmd.Parameters.AddWithValue("@TipoArchivo", tipoArchivo);
-            cmd.Parameters.AddWithValue("@TamanoKb", (object?)tamanoKb ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Descripcion", (object?)descripcion ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FechaSubida", DateTime.Now);
-            cmd.Parameters.AddWithValue("@SubidoPor", (object?)idUsuario ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Activo", true);
+            List<byte[]> contenidos = new List<byte[]>();
+            List<string> nombres = new List<string>();
+            List<string> tipos = new List<string>();
+            List<int> tamanos = new List<int>();
             
-            var idArchivo = (int)(await cmd.ExecuteScalarAsync())!;
+            using (var cmdSelect = new NpgsqlCommand(querySelect, connection))
+            {
+                cmdSelect.Parameters.AddWithValue("@IdComercio", idComercio);
+                using var reader = await cmdSelect.ExecuteReaderAsync();
+                
+                if (await reader.ReadAsync())
+                {
+                    // Cargar arrays existentes
+                    if (!reader.IsDBNull(0))
+                    {
+                        var contenidosExistentes = (byte[][])reader.GetValue(0);
+                        contenidos.AddRange(contenidosExistentes);
+                    }
+                    if (!reader.IsDBNull(1))
+                    {
+                        var nombresExistentes = (string[])reader.GetValue(1);
+                        nombres.AddRange(nombresExistentes);
+                    }
+                    if (!reader.IsDBNull(2))
+                    {
+                        var tiposExistentes = (string[])reader.GetValue(2);
+                        tipos.AddRange(tiposExistentes);
+                    }
+                    if (!reader.IsDBNull(3))
+                    {
+                        var tamanosExistentes = (int[])reader.GetValue(3);
+                        tamanos.AddRange(tamanosExistentes);
+                    }
+                }
+            }
             
-            Console.WriteLine($"✅ Archivo guardado exitosamente con ID: {idArchivo}");
+            // Agregar el nuevo archivo
+            contenidos.Add(contenidoArchivo);
+            nombres.Add(nombreArchivo);
+            tipos.Add(tipoArchivo);
+            tamanos.Add(tamanoKb);
             
-            return idArchivo;
+            // Actualizar en la BD
+            var queryUpdate = @"UPDATE comercios SET 
+                               archivos_contenido = @Contenidos,
+                               archivos_nombres = @Nombres,
+                               archivos_tipos = @Tipos,
+                               archivos_tamanos = @Tamanos
+                               WHERE id_comercio = @IdComercio";
+            
+            using var cmdUpdate = new NpgsqlCommand(queryUpdate, connection);
+            cmdUpdate.Parameters.AddWithValue("@Contenidos", contenidos.ToArray());
+            cmdUpdate.Parameters.AddWithValue("@Nombres", nombres.ToArray());
+            cmdUpdate.Parameters.AddWithValue("@Tipos", tipos.ToArray());
+            cmdUpdate.Parameters.AddWithValue("@Tamanos", tamanos.ToArray());
+            cmdUpdate.Parameters.AddWithValue("@IdComercio", idComercio);
+            
+            await cmdUpdate.ExecuteNonQueryAsync();
+            
+            Console.WriteLine($"✅ Archivo guardado exitosamente en índice: {contenidos.Count - 1}");
+            
+            return contenidos.Count - 1; // Devolver el índice del archivo
         }
         catch (Exception ex)
         {
@@ -165,39 +185,88 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Elimina un archivo (marca como inactivo y elimina físicamente)
+    /// Elimina un archivo del array (por índice)
     /// </summary>
-    public async Task<bool> EliminarArchivo(int idArchivo)
+    public async Task<bool> EliminarArchivo(int idComercio, int indiceArchivo)
     {
         try
         {
-            Console.WriteLine($"🗑️ EliminarArchivo - ID: {idArchivo}");
+            Console.WriteLine($"🗑️ EliminarArchivo - ID Comercio: {idComercio}, Índice: {indiceArchivo}");
             
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
-            // Obtener ruta del archivo
-            var querySelect = "SELECT ruta_archivo FROM archivos_comercios WHERE id_archivo = @Id";
-            using var cmdSelect = new NpgsqlCommand(querySelect, connection);
-            cmdSelect.Parameters.AddWithValue("@Id", idArchivo);
-            var ruta = await cmdSelect.ExecuteScalarAsync() as string;
+            // Obtener arrays existentes
+            var querySelect = @"SELECT archivos_contenido, archivos_nombres, archivos_tipos, archivos_tamanos
+                               FROM comercios WHERE id_comercio = @IdComercio";
             
-            // Eliminar archivo físico
-            if (!string.IsNullOrEmpty(ruta) && File.Exists(ruta))
+            List<byte[]> contenidos = new List<byte[]>();
+            List<string> nombres = new List<string>();
+            List<string> tipos = new List<string>();
+            List<int> tamanos = new List<int>();
+            
+            using (var cmdSelect = new NpgsqlCommand(querySelect, connection))
             {
-                File.Delete(ruta);
-                Console.WriteLine($"   ✅ Archivo físico eliminado: {ruta}");
+                cmdSelect.Parameters.AddWithValue("@IdComercio", idComercio);
+                using var reader = await cmdSelect.ExecuteReaderAsync();
+                
+                if (await reader.ReadAsync())
+                {
+                    if (!reader.IsDBNull(0))
+                    {
+                        var contenidosExistentes = (byte[][])reader.GetValue(0);
+                        contenidos.AddRange(contenidosExistentes);
+                    }
+                    if (!reader.IsDBNull(1))
+                    {
+                        var nombresExistentes = (string[])reader.GetValue(1);
+                        nombres.AddRange(nombresExistentes);
+                    }
+                    if (!reader.IsDBNull(2))
+                    {
+                        var tiposExistentes = (string[])reader.GetValue(2);
+                        tipos.AddRange(tiposExistentes);
+                    }
+                    if (!reader.IsDBNull(3))
+                    {
+                        var tamanosExistentes = (int[])reader.GetValue(3);
+                        tamanos.AddRange(tamanosExistentes);
+                    }
+                }
             }
             
-            // Marcar como inactivo en BD
-            var queryUpdate = "UPDATE archivos_comercios SET activo = false WHERE id_archivo = @Id";
+            // Validar índice
+            if (indiceArchivo < 0 || indiceArchivo >= nombres.Count)
+            {
+                Console.WriteLine($"❌ Índice inválido: {indiceArchivo}");
+                return false;
+            }
+            
+            // Eliminar el archivo del índice especificado
+            contenidos.RemoveAt(indiceArchivo);
+            nombres.RemoveAt(indiceArchivo);
+            tipos.RemoveAt(indiceArchivo);
+            tamanos.RemoveAt(indiceArchivo);
+            
+            // Actualizar en la BD
+            var queryUpdate = @"UPDATE comercios SET 
+                               archivos_contenido = @Contenidos,
+                               archivos_nombres = @Nombres,
+                               archivos_tipos = @Tipos,
+                               archivos_tamanos = @Tamanos
+                               WHERE id_comercio = @IdComercio";
+            
             using var cmdUpdate = new NpgsqlCommand(queryUpdate, connection);
-            cmdUpdate.Parameters.AddWithValue("@Id", idArchivo);
+            cmdUpdate.Parameters.AddWithValue("@Contenidos", contenidos.Count > 0 ? contenidos.ToArray() : DBNull.Value);
+            cmdUpdate.Parameters.AddWithValue("@Nombres", nombres.Count > 0 ? nombres.ToArray() : DBNull.Value);
+            cmdUpdate.Parameters.AddWithValue("@Tipos", tipos.Count > 0 ? tipos.ToArray() : DBNull.Value);
+            cmdUpdate.Parameters.AddWithValue("@Tamanos", tamanos.Count > 0 ? tamanos.ToArray() : DBNull.Value);
+            cmdUpdate.Parameters.AddWithValue("@IdComercio", idComercio);
             
-            var resultado = await cmdUpdate.ExecuteNonQueryAsync() > 0;
-            Console.WriteLine($"   {(resultado ? "✅" : "❌")} Registro actualizado en BD");
+            await cmdUpdate.ExecuteNonQueryAsync();
             
-            return resultado;
+            Console.WriteLine($"✅ Archivo eliminado exitosamente");
+            return true;
         }
         catch (Exception ex)
         {
@@ -207,31 +276,49 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Descarga un archivo a una ubicación específica
+    /// Descarga un archivo (por índice) a una ubicación específica
     /// </summary>
-    public async Task DescargarArchivo(int idArchivo, string rutaDestino)
+    public async Task DescargarArchivo(int idComercio, int indiceArchivo, string rutaDestino)
     {
         try
         {
-            Console.WriteLine($"⬇️ DescargarArchivo - ID: {idArchivo}");
+            Console.WriteLine($"⬇️ DescargarArchivo - ID Comercio: {idComercio}, Índice: {indiceArchivo}");
             Console.WriteLine($"   Destino: {rutaDestino}");
             
-            var rutaOrigen = await ObtenerRutaArchivo(idArchivo);
+            using var connection = new NpgsqlConnection(ConnectionString);
+            await connection.OpenAsync();
             
-            if (string.IsNullOrEmpty(rutaOrigen))
-                throw new FileNotFoundException("Archivo no encontrado en la base de datos");
+            var query = @"SELECT archivos_contenido, archivos_nombres
+                         FROM comercios WHERE id_comercio = @IdComercio";
             
-            if (!File.Exists(rutaOrigen))
-                throw new FileNotFoundException("Archivo físico no encontrado", rutaOrigen);
+            using var cmd = new NpgsqlCommand(query, connection);
+            cmd.Parameters.AddWithValue("@IdComercio", idComercio);
             
-            // Crear directorio de destino si no existe
-            var directorioDestino = Path.GetDirectoryName(rutaDestino);
-            if (!string.IsNullOrEmpty(directorioDestino))
-                Directory.CreateDirectory(directorioDestino);
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                if (!reader.IsDBNull(0) && !reader.IsDBNull(1))
+                {
+                    var contenidos = (byte[][])reader.GetValue(0);
+                    var nombres = (string[])reader.GetValue(1);
+                    
+                    if (indiceArchivo >= 0 && indiceArchivo < contenidos.Length)
+                    {
+                        // Crear directorio de destino si no existe
+                        var directorioDestino = Path.GetDirectoryName(rutaDestino);
+                        if (!string.IsNullOrEmpty(directorioDestino))
+                            Directory.CreateDirectory(directorioDestino);
+                        
+                        // Guardar el archivo
+                        await File.WriteAllBytesAsync(rutaDestino, contenidos[indiceArchivo]);
+                        
+                        Console.WriteLine($"✅ Archivo descargado: {nombres[indiceArchivo]}");
+                        return;
+                    }
+                }
+            }
             
-            // Copiar archivo
-            File.Copy(rutaOrigen, rutaDestino, overwrite: true);
-            Console.WriteLine($"   ✅ Archivo descargado exitosamente");
+            throw new FileNotFoundException("Archivo no encontrado");
         }
         catch (Exception ex)
         {
@@ -241,30 +328,40 @@ public class ArchivoService
     }
     
     /// <summary>
-    /// Obtiene la ruta de un archivo (devuelve la ruta para abrir)
+    /// Obtiene el contenido de un archivo como bytes
     /// </summary>
-    public async Task<string?> ObtenerRutaArchivo(int idArchivo)
+    public async Task<byte[]?> ObtenerContenidoArchivo(int idComercio, int indiceArchivo)
     {
         try
         {
             using var connection = new NpgsqlConnection(ConnectionString);
             await connection.OpenAsync();
             
-            var query = "SELECT ruta_archivo FROM archivos_comercios WHERE id_archivo = @Id AND (activo IS NULL OR activo = true)";
+            var query = "SELECT archivos_contenido FROM comercios WHERE id_comercio = @IdComercio";
             using var cmd = new NpgsqlCommand(query, connection);
-            cmd.Parameters.AddWithValue("@Id", idArchivo);
+            cmd.Parameters.AddWithValue("@IdComercio", idComercio);
             
-            return await cmd.ExecuteScalarAsync() as string;
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync() && !reader.IsDBNull(0))
+            {
+                var contenidos = (byte[][])reader.GetValue(0);
+                if (indiceArchivo >= 0 && indiceArchivo < contenidos.Length)
+                {
+                    return contenidos[indiceArchivo];
+                }
+            }
+            
+            return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error obteniendo ruta de archivo: {ex.Message}");
+            Console.WriteLine($"❌ Error obteniendo contenido de archivo: {ex.Message}");
             return null;
         }
     }
     
     /// <summary>
-    /// Obtiene el tipo de archivo según la extensión (texto descriptivo)
+    /// Obtiene el tipo de archivo según la extensión
     /// </summary>
     private string ObtenerTipoArchivo(string extension)
     {
@@ -296,20 +393,24 @@ public class ArchivoService
         {
             Console.WriteLine($"🗑️ EliminarArchivosDeComercio - ID Comercio: {idComercio}");
             
-            var archivos = await ObtenerArchivosPorComercio(idComercio);
-            int eliminados = 0;
+            using var connection = new NpgsqlConnection(ConnectionString);
+            await connection.OpenAsync();
             
-            foreach (var archivo in archivos)
-            {
-                if (await EliminarArchivo(archivo.IdArchivo))
-                {
-                    eliminados++;
-                }
-            }
+            var query = @"UPDATE comercios SET 
+                         archivos_contenido = NULL,
+                         archivos_nombres = NULL,
+                         archivos_tipos = NULL,
+                         archivos_tamanos = NULL
+                         WHERE id_comercio = @IdComercio";
             
-            Console.WriteLine($"   ✅ Archivos eliminados: {eliminados}");
+            using var cmd = new NpgsqlCommand(query, connection);
+            cmd.Parameters.AddWithValue("@IdComercio", idComercio);
             
-            return eliminados;
+            var resultado = await cmd.ExecuteNonQueryAsync();
+            
+            Console.WriteLine($"✅ Archivos eliminados del comercio");
+            
+            return resultado;
         }
         catch (Exception ex)
         {

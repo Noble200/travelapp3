@@ -73,14 +73,6 @@ C:\Users\Ruso\Desktop\AllvaSystem - copia\src\Allva.Desktop\bin\Debug\net8.0\run
 C:\Users\Ruso\Desktop\AllvaSystem - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.csproj.CopyComplete
 C:\Users\Ruso\Desktop\AllvaSystem - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.genruntimeconfig.cache
 C:\Users\Ruso\Desktop\AllvaSystem - copia\src\Allva.Desktop\obj\Debug\net8.0\ref\Allva.Desktop.dll
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.csproj.AssemblyReference.cache
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\Resources.Inputs.cache
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\resources
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.AssemblyInfoInputs.cache
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.AssemblyInfo.cs
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.csproj.CoreCompileInputs.cache
-C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.sourcelink.json
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\Allva.Desktop.exe
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\Allva.Desktop.deps.json
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\Allva.Desktop.runtimeconfig.json
@@ -142,6 +134,14 @@ C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\ne
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\runtimes\win-arm64\native\libSkiaSharp.dll
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\runtimes\win-x64\native\libSkiaSharp.dll
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\bin\Debug\net8.0\runtimes\win-x86\native\libSkiaSharp.dll
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.csproj.AssemblyReference.cache
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\Resources.Inputs.cache
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\resources
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.AssemblyInfoInputs.cache
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.AssemblyInfo.cs
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.csproj.CoreCompileInputs.cache
+C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Allva.Desktop.sourcelink.json
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\Allva.Desktop.dll
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\Avalonia\Allva.Desktop.pdb
 C:\Users\Ruso\Desktop\AllvaSystem - copia - copia\src\Allva.Desktop\obj\Debug\net8.0\refint\Avalonia\Allva.Desktop.dll

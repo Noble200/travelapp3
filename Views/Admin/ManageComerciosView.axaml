@@ -360,7 +360,7 @@
                                                     Command="{Binding $parent[ItemsControl].((vm:ManageComerciosViewModel)DataContext).VerDetallesComercioCommand}"
                                                     CommandParameter="{Binding}">
                                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <TextBlock Text="👁️" FontSize="16"/>
+                                                    <TextBlock Text="" FontSize="16"/>
                                                     <TextBlock Text="Ver Detalles"/>
                                                 </StackPanel>
                                             </Button>

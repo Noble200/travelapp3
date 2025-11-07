@@ -339,7 +339,7 @@ public partial class ManageComerciosViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void VerDetallesComercio(ComercioModel comercio)
+    private async Task VerDetallesComercio(ComercioModel comercio)
     {
         ComercioSeleccionado = comercio;
         TituloPanelDerecho = $"Detalles de {comercio.NombreComercio}";
@@ -347,7 +347,7 @@ public partial class ManageComerciosViewModel : ObservableObject
         MostrarPanelDerecho = true;
         
         // Cargar archivos del comercio
-        _ = CargarArchivosComercio(comercio.IdComercio);
+        await CargarArchivosComercio(comercio.IdComercio);
     }
 
     [RelayCommand]
@@ -622,29 +622,29 @@ public partial class ManageComerciosViewModel : ObservableObject
                 await cmdLocal.ExecuteNonQueryAsync();
             }
             
-            // 4. Subir archivos nuevos si hay
-            if (ArchivosParaSubir.Any())
-            {
-                foreach (var rutaArchivo in ArchivosParaSubir)
-                {
-                    try
-                    {
-                        await _archivoService.SubirArchivo(ComercioSeleccionado.IdComercio, rutaArchivo, null, null);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error subiendo archivo {rutaArchivo}: {ex.Message}");
-                        // Continuar con los demás archivos aunque uno falle
-                    }
-                }
-            }
-            
             await transaction.CommitAsync();
         }
         catch
         {
             await transaction.RollbackAsync();
             throw;
+        }
+        
+        // 4. AHORA SÍ, SUBIR ARCHIVOS FUERA DE LA TRANSACCIÓN
+        if (ArchivosParaSubir.Any())
+        {
+            foreach (var rutaArchivo in ArchivosParaSubir)
+            {
+                try
+                {
+                    await _archivoService.SubirArchivo(ComercioSeleccionado.IdComercio, rutaArchivo, null, null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error subiendo archivo {rutaArchivo}: {ex.Message}");
+                    // Continuar con los demás archivos aunque uno falle
+                }
+            }
         }
     }
 
@@ -863,33 +863,57 @@ public partial class ManageComerciosViewModel : ObservableObject
     [RelayCommand]
     private async Task DescargarArchivo(ArchivoComercioModel archivo)
     {
-        if (archivo == null) return;
+        if (archivo == null || ComercioSeleccionado == null) return;
         
         try
         {
-            var descargas = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads"
-            );
+            // Obtener la ventana principal
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is 
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (topLevel == null) return;
+
+            var storage = topLevel.StorageProvider;
             
-            var rutaDestino = Path.Combine(descargas, archivo.NombreArchivo);
-            
-            await _archivoService.DescargarArchivo(archivo.IdArchivo, rutaDestino);
-            
-            MensajeExito = $"✓ Archivo descargado: {archivo.NombreArchivo}";
-            MostrarMensajeExito = true;
-            await Task.Delay(3000);
-            MostrarMensajeExito = false;
+            // Abrir diálogo para guardar archivo
+            var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Guardar archivo",
+                SuggestedFileName = archivo.NombreArchivo,
+                DefaultExtension = Path.GetExtension(archivo.NombreArchivo),
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("Todos los archivos") { Patterns = new[] { "*.*" } }
+                }
+            });
+
+            if (file != null)
+            {
+                var rutaDestino = file.Path.LocalPath;
+                
+                // Descargar el archivo
+                await _archivoService.DescargarArchivo(
+                    ComercioSeleccionado.IdComercio, 
+                    archivo.IdArchivo,
+                    rutaDestino
+                );
+                
+                MensajeExito = $"✓ Archivo guardado: {archivo.NombreArchivo}";
+                MostrarMensajeExito = true;
+                await Task.Delay(3000);
+                MostrarMensajeExito = false;
+            }
         }
         catch (Exception ex)
         {
-            MensajeExito = $"❌ Error al descargar: {ex.Message}";
+            MensajeExito = $"❌ Error al guardar: {ex.Message}";
             MostrarMensajeExito = true;
             await Task.Delay(5000);
             MostrarMensajeExito = false;
         }
     }
-
     // ============================================
     // MÉTODOS AUXILIARES - FORMULARIO
     // ============================================
