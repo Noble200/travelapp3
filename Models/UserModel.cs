@@ -32,6 +32,8 @@ public class UserModel : INotifyPropertyChanged
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(EstadoTexto));
                 OnPropertyChanged(nameof(EstadoColor));
+                OnPropertyChanged(nameof(EstadoBotonTexto));
+                OnPropertyChanged(nameof(EstadoBotonColor));
             }
         }
     }
@@ -61,6 +63,17 @@ public class UserModel : INotifyPropertyChanged
     public string UltimoAccesoTexto => UltimoAcceso.HasValue
         ? UltimoAcceso.Value.ToString("dd/MM/yyyy HH:mm")
         : "Nunca";
+    
+    // ============================================
+    // PROPIEDADES ADICIONALES PARA MÓDULO DE GESTIÓN
+    // ============================================
+    
+    public int IdComercio { get; set; }
+    public int IdLocal { get; set; }
+    public string CodigoLocal { get; set; } = string.Empty;
+    
+    public string EstadoBotonTexto => Activo ? "Desactivar" : "Activar";
+    public string EstadoBotonColor => Activo ? "#dc3545" : "#28a745";
     
     // ============================================
     // INotifyPropertyChanged
